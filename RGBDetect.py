@@ -1,7 +1,7 @@
 '''
 last modified date = 2024-11-14
 version = 0.2
-use = RGB값을 검출하고 시각화하기 위해 사용하는 클래스, 함수 정의
+use = 검출된 RGB값을 시각화하기 위해 사용하는 클래스, 함수 정의
 TODO : scipy로 밴드패스필터
 '''
 
@@ -12,64 +12,69 @@ from collections import deque
 import time
 import constantValue
 
-class RealTimeRGBPlot: # RGB array를 입력 받아 bandpass filtering을 한 후 시각화하기 위한 클래스
-    def __init__(self, max_len = constantValue.dequeMaxLen, xValue = constantValue.xValue):
-        # 데이터 저장을 위한 deque 초기화
+class RealTimeRGBPlot:
+    def __init__(self, max_len=constantValue.dequeMaxLen, xValue=constantValue.xValue):
         self.xValue = xValue
         self.max_len = max_len
         self.array_RGB_prev = None
         self.r_data = deque(maxlen=max_len)
         self.g_data = deque(maxlen=max_len)
         self.b_data = deque(maxlen=max_len)
-        self.total_data = deque(maxlen=max_len) #test
+        self.total_data = deque(maxlen=max_len)
         self.time = 0
         self.time_data = deque(maxlen=max_len)
 
-        # 플롯 설정
+        # Plot 설정
         self.fig, self.ax = plt.subplots()
         self.r_line, = self.ax.plot([], [], 'r-', label='Red')
         self.g_line, = self.ax.plot([], [], 'g-', label='Green')
         self.b_line, = self.ax.plot([], [], 'b-', label='Blue')
-        self.total_line, = self.ax.plot([], [], 'p-', label='total') #test
+        self.total_line, = self.ax.plot([], [], 'p-', label='total')  # test
         self.ax.set_xlim(0, xValue)
-        self.ax.set_ylim(0, 30)  # RGB 값 범위 (-20~20)
+        self.ax.set_ylim(0, 30)
         self.ax.set_title("Real-time RGB Signal")
         self.ax.set_xlabel("Time")
         self.ax.set_ylabel("Intensity")
         self.ax.legend()
-        plt.ion()  # 인터랙티브 모드 활성화
+        plt.ion()
 
-    def update_data(self, array_RGB):
-        if self.array_RGB_prev == None: #초기값
+    def append_rgb_data(self, array_RGB):
+        """RGB 값을 기반으로 deque에 차이값 저장"""
+        if self.array_RGB_prev is None:
             self.array_RGB_prev = array_RGB
-            return
+            return  # 초기 상태에서는 변화값이 없음
 
-        # 이전 RGB값과의 차이를 계산하여 업데이트, 시간축 업데이트
-        self.r_data.append(abs(self.array_RGB_prev[0] - array_RGB[0]))
-        self.g_data.append(abs(self.array_RGB_prev[1] - array_RGB[1]))
-        self.b_data.append(abs(self.array_RGB_prev[2] - array_RGB[2]))
-        self.total_data.append(self.r_data[-1] + (2 * self.g_data[-1]) + (0.5 * self.b_data[-1])) #test
-        self.array_RGB_prev = array_RGB
+        r_diff = abs(self.array_RGB_prev[0] - array_RGB[0])
+        g_diff = abs(self.array_RGB_prev[1] - array_RGB[1])
+        b_diff = abs(self.array_RGB_prev[2] - array_RGB[2])
+        total_diff = r_diff + (2 * g_diff) + (0.5 * b_diff)
+
+        self.r_data.append(r_diff)
+        self.g_data.append(g_diff)
+        self.b_data.append(b_diff)
+        self.total_data.append(total_diff)
+
         self.time = time.perf_counter()
-        self.time_data.append(self.time) # 현실 시간으로 x축 반영
+        self.time_data.append(self.time)
+        self.array_RGB_prev = array_RGB
 
-        # 각 시각화 라인 데이터 업데이트
+    def update_plot(self):
+        """현재 deque 데이터를 사용하여 그래프를 업데이트"""
         self.r_line.set_data(self.time_data, self.r_data)
         self.g_line.set_data(self.time_data, self.g_data)
         self.b_line.set_data(self.time_data, self.b_data)
-        self.total_line.set_data(self.time_data, self.total_data) #test
+        self.total_line.set_data(self.time_data, self.total_data)
 
-        # x축 업데이트 (시간 경과에 따라 이동)
         if self.time > self.xValue:
             self.ax.set_xlim(self.time - self.xValue, self.time)
 
-        # 그래프 업데이트
         plt.pause(0.05)
         plt.draw()
 
     def close(self):
         plt.ioff()
         plt.show()
+
 
 def returnRGB(frame_rightcheek, frame_leftcheek): # 양쪽 뺨 rgb값 더한 후 2로 나누고 리턴하는 함수
     bgr_right = numpy.array(cv2.mean(frame_rightcheek))

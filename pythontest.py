@@ -10,6 +10,10 @@ import numpy
 import RGBDetect
 import constantValue
 import time
+import serial
+
+#시리얼통신 객체 생성
+heratRateSerial = serial.Serial(port = constantValue.serialPort, baudrate=115200)
 
 cnt = constantValue.cnt # 얼굴인식 프레임
 cap = cv2.VideoCapture(0)
@@ -19,6 +23,9 @@ face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 
 #RGB값 시각화용 plot 생성
 plot = RGBDetect.RealTimeRGBPlot()
+
+#웹캠 최대 프레임 체크
+print(cap.get(cv2.CAP_PROP_FPS))
 
 # 비디오 재생 시작
 while True:
@@ -53,9 +60,10 @@ while True:
 
         RGBarray = RGBDetect.returnRGB(frame_rightCheek, frame_leftCheek) # 양쪽 뺨 RGB값 계산
 
-        plot.update_data(RGBarray)
+        plot.append_rgb_data(RGBarray)
+        if heratRateSerial.in_waiting > 0 :
+            print(heratRateSerial.readline().decode().strip())
         cnt += 1
-        # what?
 
     # 결과 비디오 출력
     try:
