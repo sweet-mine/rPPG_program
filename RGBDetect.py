@@ -10,7 +10,6 @@ import cv2
 import numpy
 import matplotlib.pyplot as plt
 from collections import deque
-import time
 import constantValue
 
 class RealTimeRGBPlot:
@@ -22,23 +21,17 @@ class RealTimeRGBPlot:
         self.g_data = deque(maxlen=max_len)
         self.b_data = deque(maxlen=max_len)
         self.total_data = deque(maxlen=max_len)
-        self.time = 0
-        self.time_data = deque(maxlen=max_len)
         self.heart_data = deque(maxlen=max_len)
 
         # Plot 설정
-        self.fig, self.ax = plt.subplots()
-        self.r_line, = self.ax.plot([], [], 'r-', label='Red')
-        self.g_line, = self.ax.plot([], [], 'g-', label='Green')
-        self.b_line, = self.ax.plot([], [], 'b-', label='Blue')
+        self.fig, self.ax = plt.subplots(figsize=(6.4, 4.8))
         self.total_line, = self.ax.plot([], [], 'p-', label='total')  # test
         self.ax.set_xlim(0, xValue)
         self.ax.set_ylim(0, 10)
-        self.ax.set_title("Real-time RGB Signal")
-        self.ax.set_xlabel("Time")
-        self.ax.set_ylabel("Intensity")
+        self.ax.set_title("RGB Signal")
+        self.ax.set_xlabel("data")
+        self.ax.set_ylabel("rgb")
         self.ax.legend()
-        plt.ion()
 
     def append_rgb_data(self, array_RGB):
         """RGB 값을 기반으로 deque에 차이값 저장"""
@@ -55,26 +48,38 @@ class RealTimeRGBPlot:
         self.g_data.append(g_diff)
         self.b_data.append(b_diff)
         self.total_data.append(total_diff)
-
-        self.time = time.perf_counter()
-        self.time_data.append(self.time)
         self.array_RGB_prev = array_RGB
 
     def append_heart_data(self, heartRate):
         self.heart_data.append(heartRate)
 
-    def update_plot(self):
-        """현재 deque 데이터를 사용하여 그래프를 업데이트"""
-        self.r_line.set_data(self.time_data, self.r_data)
-        self.g_line.set_data(self.time_data, self.g_data)
-        self.b_line.set_data(self.time_data, self.b_data)
-        self.total_line.set_data(self.time_data, self.total_data)
+    def save_plot(self):
+        """현재 deque 데이터를 사용하여 그래프를 그림"""
+        x = list(range(len(self.total_data)))
+        self.total_line.set_data(x, self.total_data)
 
-        if self.time > self.xValue:
-            self.ax.set_xlim(self.time - self.xValue, self.time)
+        # 저장 폴더와 기본 파일 이름
+        folder = "Dataset_plot"
+        base_name = "data"
 
-        plt.pause(0.05)
-        plt.draw()
+        # 폴더 없으면 생성
+        os.makedirs(folder, exist_ok=True)
+
+        # 현재 폴더 안에 있는 파일 숫자 파악
+        existing_files = os.listdir(folder)
+        existing_numbers = [
+            int(f.split('_')[1].split('.')[0])
+            for f in existing_files
+            if f.startswith(base_name) and f.endswith('.png') and f.split('_')[1].split('.')[0].isdigit()
+        ]
+
+        next_number = max(existing_numbers) + 1 if existing_numbers else 1
+        filename = f"{base_name}_{next_number}.png"
+        filepath = os.path.join(folder, filename)
+
+        #저장
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        print(f"Saved to: {filepath}")
 
     def save_dataset(self):
         # 저장 폴더와 기본 파일 이름
@@ -98,7 +103,7 @@ class RealTimeRGBPlot:
 
         # 저장
         df = pd.DataFrame({
-            'feature': list(self.total_data),
+            'rgb': list(self.total_data),
             'label': list(self.heart_data)
         })
         df.to_csv(filepath, index=False)

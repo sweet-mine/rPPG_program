@@ -30,6 +30,11 @@ print(cap.get(cv2.CAP_PROP_FPS))
 #심박 정보(String)
 heartRate = None;
 
+# frame 화면과 시리얼 수신 버퍼 초기화
+ret, frame = cap.read()
+cv2.imshow("Result", frame)
+heratRateSerial.reset_input_buffer()
+
 # 비디오 재생 시작
 while True:
     ret, frame = cap.read()     # 카메라로부터 현재 영상을 받아 frame에 저장, 잘 받았다면 ret가 참
@@ -98,4 +103,5 @@ while True:
         sys.exit(0)
 
 print("\n모든 데이터를 수집했습니다.\n")
+plot.save_plot()
 plot.save_dataset() #데이터셋으로 저장 후 종료
