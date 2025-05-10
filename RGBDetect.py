@@ -1,10 +1,11 @@
 '''
-last modified date = 2024-11-14
-version = 0.2
-use = 검출된 RGB값을 시각화하기 위해 사용하는 클래스, 함수 정의
-TODO : scipy로 밴드패스필터
+last modified date = 2025-05-10
+version = 0.3
+use = ROI를 제공하면 검출된 RGB값과 심박수값을 저장하고 시각화 할 수 있는 클래스, 함수 정의
 '''
 
+import os
+import pandas as pd
 import cv2
 import numpy
 import matplotlib.pyplot as plt
@@ -23,6 +24,7 @@ class RealTimeRGBPlot:
         self.total_data = deque(maxlen=max_len)
         self.time = 0
         self.time_data = deque(maxlen=max_len)
+        self.heart_data = deque(maxlen=max_len)
 
         # Plot 설정
         self.fig, self.ax = plt.subplots()
@@ -31,7 +33,7 @@ class RealTimeRGBPlot:
         self.b_line, = self.ax.plot([], [], 'b-', label='Blue')
         self.total_line, = self.ax.plot([], [], 'p-', label='total')  # test
         self.ax.set_xlim(0, xValue)
-        self.ax.set_ylim(0, 30)
+        self.ax.set_ylim(0, 10)
         self.ax.set_title("Real-time RGB Signal")
         self.ax.set_xlabel("Time")
         self.ax.set_ylabel("Intensity")
@@ -58,6 +60,9 @@ class RealTimeRGBPlot:
         self.time_data.append(self.time)
         self.array_RGB_prev = array_RGB
 
+    def append_heart_data(self, heartRate):
+        self.heart_data.append(heartRate)
+
     def update_plot(self):
         """현재 deque 데이터를 사용하여 그래프를 업데이트"""
         self.r_line.set_data(self.time_data, self.r_data)
@@ -70,6 +75,41 @@ class RealTimeRGBPlot:
 
         plt.pause(0.05)
         plt.draw()
+
+    def save_dataset(self):
+        # 저장 폴더와 기본 파일 이름
+        folder = "Dataset"
+        base_name = "data"
+
+        # 폴더 없으면 생성
+        os.makedirs(folder, exist_ok=True)
+
+        # 현재 폴더 안에 있는 파일 숫자 파악
+        existing_files = os.listdir(folder)
+        existing_numbers = [
+            int(f.split('_')[1].split('.')[0])
+            for f in existing_files
+            if f.startswith(base_name) and f.endswith('.csv') and f.split('_')[1].split('.')[0].isdigit()
+        ]
+
+        next_number = max(existing_numbers) + 1 if existing_numbers else 1
+        filename = f"{base_name}_{next_number}.csv"
+        filepath = os.path.join(folder, filename)
+
+        # 저장
+        df = pd.DataFrame({
+            'feature': list(self.total_data),
+            'label': list(self.heart_data)
+        })
+        df.to_csv(filepath, index=False)
+
+        print(f"Saved to: {filepath}")
+
+    def isFull(self):
+        if len(self.total_data) == self.total_data.maxlen:
+            return True
+        else:
+            return False
 
     def close(self):
         plt.ioff()
